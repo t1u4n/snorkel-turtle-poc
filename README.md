@@ -24,4 +24,6 @@ This is a prototype of the SnorkelTurtle system, which uses weakly supervision f
 ## Contributors
 
 <!-- readme: contributors -start -->
+<table>
+</table>
 <!-- readme: contributors -end -->
