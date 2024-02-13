@@ -35,7 +35,7 @@ class SnorkelServeModel:
         self.serve_cnt = 0
     
     def flush(self) -> None:
-        self.serve_cnt = self.serve_cnt % self.drift_check_freq
+        self.serve_cnt = (self.serve_cnt + 1) % self.drift_check_freq
         if self.serve_cnt == 0:
             # Check for model drift every `drift_check_freq` requests
             is_drifted = self.drift_detector.is_drift(self.model, self.get_cache_df())
