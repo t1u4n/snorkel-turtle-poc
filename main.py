@@ -1,6 +1,7 @@
 from ingestor.ingestors import CSVFileIngestor
 from snorkelcore.lflibrary import LabelingFunctionLibrary
 from snorkelcore.model import SnorkelServeModel
+from snorkelcore.driftdetector.detectors import BaseDetector
 from snorkel.labeling import labeling_function
 import pandas as pd
 
@@ -25,13 +26,18 @@ def run():
     lib = LabelingFunctionLibrary()
     for lf in lfs:
         lib.register(lf.name, lf)
+    
     label_map = {1: "Good Book", 0: "Bad Movie", -1: "N/A"}
+
+    drift_detector = BaseDetector()
 
     model = SnorkelServeModel(
         label_func_lib=lib,
         data_ingestor=ingestor,
         cardinality=2,
-        batch_size=3,
+        drift_detector=drift_detector,
+        batch_size=1,
+        drift_check_freq=1,
         label_map=label_map
     )
 

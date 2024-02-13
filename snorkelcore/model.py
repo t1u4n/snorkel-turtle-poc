@@ -2,6 +2,7 @@ from .lflibrary import LabelingFunctionLibrary
 from typing import List, Dict
 from snorkel.labeling import PandasLFApplier
 from snorkel.labeling.model import LabelModel
+from .driftdetector.detectors import BaseDetector
 import pandas as pd
 
 class SnorkelServeModel:
@@ -10,14 +11,17 @@ class SnorkelServeModel:
             label_func_lib: LabelingFunctionLibrary,
             data_ingestor: 'BaseIngestor',
             cardinality: int,
+            drift_detector: BaseDetector,
             batch_size: int=50,
             train_epochs: int=500,
             log_freq: int=100,
-            label_map: Dict[int, str]=None
+            label_map: Dict[int, str]=None,
+            drift_check_freq: int=20
         ) -> None:
         self.label_func_lib = label_func_lib
         self.data_ingestor = data_ingestor
         self.cardinality = cardinality
+        self.drift_detector = drift_detector
         self.model = None
         self.applier = None
         self.cache = []
@@ -27,8 +31,18 @@ class SnorkelServeModel:
         self.log_freq = log_freq
         self.label_map = label_map
         self.is_running = False
+        self.drift_check_freq = drift_check_freq
+        self.serve_cnt = 0
     
     def flush(self) -> None:
+        self.serve_cnt = self.serve_cnt % self.drift_check_freq
+        if self.serve_cnt == 0:
+            # Check for model drift every `drift_check_freq` requests
+            is_drifted = self.drift_detector.is_drift(self.model, self.get_cache_df())
+            if is_drifted:
+                print("Drift detected! Re-training the model...")
+                self.train_model()
+
         predict = self.predict()
         self.predictions.append(predict)
 
@@ -59,13 +73,16 @@ class SnorkelServeModel:
     def train_model(self) -> None:
         lfs = self.label_func_lib.get_all()
         self.applier = PandasLFApplier(lfs=lfs)
-        df = pd.concat(self.cache, axis=1).transpose()
+        df = self.get_cache_df()
         L_train = self.applier.apply(df=df)
         self.model = LabelModel(cardinality=self.cardinality)
         self.model.fit(L_train=L_train, n_epochs=self.train_epochs, log_freq=self.log_freq)
 
+    def get_cache_df(self) -> pd.DataFrame:
+        return pd.concat(self.cache, axis=1).transpose()
+
     def predict(self) -> pd.DataFrame:
-        df = pd.concat(self.cache, axis=1).transpose()
+        df = self.get_cache_df()
         L = self.applier.apply(df)
         df['label'] = self.model.predict(L=L)
         if self.label_map is not None:
