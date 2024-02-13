@@ -20,3 +20,8 @@ This is a prototype of the SnorkelTurtle system, which uses weakly supervision f
     ```
     python main.py
     ```
+
+## Contributors
+
+<!-- readme: contributors -start -->
+<!-- readme: contributors -end -->
