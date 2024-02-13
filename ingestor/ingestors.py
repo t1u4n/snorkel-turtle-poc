@@ -2,5 +2,5 @@ class BaseIngestor:
     def __init__(self) -> None:
         pass
 
-    def next(self) -> str:
+    def __next__(self) -> str:
         return "not implemented"
