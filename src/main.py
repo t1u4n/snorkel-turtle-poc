@@ -1,9 +1,9 @@
 from ingestor.ingestors import CSVFileIngestor
+from loader.loaders import CSVLoader
 from snorkelcore.lflibrary import LabelingFunctionLibrary
 from snorkelcore.model import SnorkelServeModel
 from snorkelcore.driftdetector.detectors import BaseDetector
 from snorkel.labeling import labeling_function
-import pandas as pd
 
 @labeling_function(name="is_positive")
 def positive_sentiment(x):
@@ -21,6 +21,8 @@ def noise(x):
 
 def run():
     ingestor = CSVFileIngestor('resources/data/data.csv')
+
+    loader = CSVLoader('output/predictions.csv')
     
     lfs = [positive_sentiment, comment_class, noise]
     lib = LabelingFunctionLibrary()
@@ -34,18 +36,18 @@ def run():
     model = SnorkelServeModel(
         label_func_lib=lib,
         data_ingestor=ingestor,
+        data_loader=loader,
         cardinality=2,
         drift_detector=drift_detector,
         batch_size=1,
         drift_check_freq=1,
+        load_batch_size=1,
         label_map=label_map
     )
 
     try:
         model.run()
     finally:
-        # Write predictions
-        pd.concat(model.predictions).to_csv("output/predictions.csv", index=False)
         model.stop()
     
 
