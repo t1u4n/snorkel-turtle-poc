@@ -10,16 +10,19 @@ class SnorkelServeModel:
             self,
             label_func_lib: LabelingFunctionLibrary,
             data_ingestor: 'BaseIngestor',
+            data_loader: 'BaseLoader',
             cardinality: int,
             drift_detector: BaseDetector,
             batch_size: int=50,
             train_epochs: int=500,
             log_freq: int=100,
             label_map: Dict[int, str]=None,
-            drift_check_freq: int=20
+            drift_check_freq: int=20,
+            load_batch_size: int=50
         ) -> None:
         self.label_func_lib = label_func_lib
         self.data_ingestor = data_ingestor
+        self.data_loader = data_loader
         self.cardinality = cardinality
         self.drift_detector = drift_detector
         self.model = None
@@ -32,6 +35,7 @@ class SnorkelServeModel:
         self.label_map = label_map
         self.is_running = False
         self.drift_check_freq = drift_check_freq
+        self.load_batch_size = load_batch_size
         self.serve_cnt = 0
     
     def flush(self) -> None:
@@ -45,6 +49,10 @@ class SnorkelServeModel:
 
         predict = self.predict()
         self.predictions.append(predict)
+        if len(self.predictions) == self.load_batch_size:
+            # Load data to target if enough predictions are cached
+            self.data_loader.flush(self.predictions)
+            self.predictions = []
 
     def serve(self) -> None:
         while self.is_running:
